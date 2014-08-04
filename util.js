@@ -18,7 +18,14 @@ exports.parts = function (n) {
   return [n - d, n + d]
 }
 
-exports.firstChild = function (n) {
+var rootIndex = exports.rootIndex = function (length) {
+  var i = 1
+  length = length - 1
+  while(length >>= 1) i <<= 1
+  return i
+}
+
+var firstChild = exports.firstChild = function (n) {
   if(n%2) return n
   var d = 1 << (height(n) - 1)
   return n - d
@@ -32,6 +39,31 @@ var belongs = exports.belongs = function (n) {
   return height(n - d) < height(n + d) ? n - d : n + d
 }
 
+var father = exports.father = function (i, l) {
+  var j = belongs(i)
+  while(j >= l) j = belongs(j)
+  return j
+}
+
+function brother (i, j, l) {
+  var generation = 1 << (height(j) - 1)
+  var other = j < i ? j - generation : j + generation
+  while(other >= l) other = firstChild(other)
+  return other
+}
+
+
+exports.uncles = function (ary, i) {
+  var uncles = []
+  var l = ary.length, j
+  var root = rootIndex(l)
+  while(i !== root) {
+    uncles.push(ary[brother(i, j = father(i, l), l)])
+    i = j
+  }
+  return uncles
+}
+
 var createHash = require('crypto').createHash
 
 var combine = exports.combine = function (a, b) {
@@ -40,7 +72,60 @@ var combine = exports.combine = function (a, b) {
     .digest().slice(0, 16)
 }
 
+exports.recombine = function (uncles, me, i, l) {
+  uncles = uncles.slice()
+  while(uncles.length) {
+    var j = father(i, l)
+    me = j > i
+      ? combine(me, uncles.shift())
+      : combine(uncles.shift(), me)
+    i = j
+  }
+  return me
+}
+
+function create () {
+  var i = 0, j = 0, l = 0
+  var out = []
+  return {
+    update: function (hash) {
+      j = 2 * (i++) + 1
+      out[j] = hash
+      var parent = belongs(j)
+      while(parent < j) {
+        //get the younger sibling
+        var sibling = parent - (j - parent)
+        out[parent] = combine(out[sibling], out[j])
+        j = parent; parent = belongs(j)
+      }
+      return this
+    },
+    digest: function () {
+      var root = rootIndex(out.length)
+      while(j !== root) {
+        var parent = belongs(j)
+        if(parent < out.length) {
+          var sibling = parent - (j - parent)
+
+          //if the dad is not in the alive,
+          //the oldest son becomes head of the family.
+          while(j >= out.length)
+            j = exports.firstChild(j)
+
+          out[parent] = combine(out[sibling], out[j])
+        }
+        j = parent
+      }
+      return out
+    }
+  }
+}
+
 exports.fromArray = function (array) {
+  var h = create()
+  array.forEach(h.update)
+  return h.digest()
+
   var length = array.length
   var out = new Array(length * 2 - 1)
   var parent, j
@@ -59,8 +144,7 @@ exports.fromArray = function (array) {
   }
 
   while(j !== root) {
-    var parent = j
-    parent = belongs(j)
+    var parent = belongs(j)
     if(parent < out.length) {
       var sibling = parent - (j - parent)
 
@@ -75,52 +159,5 @@ exports.fromArray = function (array) {
   }
 
   return out
-}
-
-exports.uncles = function (ary, i) {
-  var uncles = []
-  var root = rootIndex(ary.length)
-  while(true) {
-    if(i === root) return uncles
-    var j = belongs(i)
-    var brother
-    while(j >= ary.length) {
-      j = belongs(j)
-    }
-
-    //append the *other* hash, so that a recepient can
-    //verify that the sent data forms the root hash.
-    var removes =  1 << (height(j) - 1)
-
-    var brother = //j - -(j - i)
-      j < i ? j - removes : j + removes
-
-    while(brother >= ary.length) {
-      brother = exports.firstChild(brother)
-    }
-    uncles.push(ary[brother])
-    i = j
-  }
-}
-
-exports.recombine = function (uncles, me, i, l) {
-  uncles = uncles.slice()
-  while(uncles.length) {
-    var j = belongs(i)
-    while(l && j >= l) j = belongs(j)
-
-    me = j > i
-      ? combine(me, uncles.shift())
-      : combine(uncles.shift(), me)
-    i = j
-  }
-  return me
-}
-
-var rootIndex = exports.rootIndex = function (length) {
-  var i = 1
-  length = length - 1
-  while(length >>= 1) i <<= 1
-  return i
 }
 
