@@ -1,7 +1,7 @@
 'use strict';
 
 //count the factors of two in this number.
-var depth = exports.depth = function (n) {
+var height = exports.height = function (n) {
   var f = 0
   while(!(n & 1)) {
     f++; n = n >> 1
@@ -14,33 +14,25 @@ var depth = exports.depth = function (n) {
 //and children are always have less factors of 2)
 exports.parts = function (n) {
   if(n%2) return [n]
-  var d = 1 << (depth(n) - 1)
+  var d = 1 << (height(n) - 1)
   return [n - d, n + d]
 }
 
 exports.firstChild = function (n) {
   if(n%2) return n
-  var d = 1 << (depth(n) - 1)
+  var d = 1 << (height(n) - 1)
   return n - d
 }
 
 var belongs = exports.belongs = function (n) {
   n = +n
-  var d = 1 << depth(n)
+  var d = 1 << height(n)
   //handle powers of 2
   if(n - d === 0) return n << 1
-  return depth(n - d) < depth (n + d) ? n - d : n + d
+  return height(n - d) < height(n + d) ? n - d : n + d
 }
 
 var createHash = require('crypto').createHash
-
-function XOR (a, b) {
-  var l = Math.max(a.length, b.length)
-  var c = new Buffer(l)
-  for(var i = 0; i < l; i ++)
-    c[i] = (a[i] | 0) ^ (b[i] | 0)
-  return c
-}
 
 var combine = exports.combine = function (a, b) {
   return createHash('sha256')
@@ -77,13 +69,11 @@ exports.fromArray = function (array) {
       while(j >= out.length)
         j = exports.firstChild(j)
 
-      console.log('>', parent, sibling, j)
-
       out[parent] = combine(out[sibling], out[j])
     }
     j = parent
   }
-  console.log('root j', j)
+
   return out
 }
 
@@ -97,16 +87,15 @@ exports.uncles = function (ary, i) {
     while(j >= ary.length) {
       j = belongs(j)
     }
-//    console.log('belongs', i, 'to', j)
+
     //append the *other* hash, so that a recepient can
     //verify that the sent data forms the root hash.
-    var removes =  1 << (depth(j) - 1)
+    var removes =  1 << (height(j) - 1)
 
     var brother = //j - -(j - i)
       j < i ? j - removes : j + removes
 
     while(brother >= ary.length) {
-//      console.log('bro', brother)
       brother = exports.firstChild(brother)
     }
     uncles.push(ary[brother])
@@ -119,13 +108,7 @@ exports.recombine = function (uncles, me, i, l) {
   while(uncles.length) {
     var j = belongs(i)
     while(l && j >= l) j = belongs(j)
-//    console.log('recombine', l, i, j, i > j ? 'me,you':'you,me')
-//    console.log(
-//      j > i
-//    ? [me.toString('hex'), uncles[0].toString('hex')]
-//    :  [uncles[0].toString('hex'), me.toString('hex')]
-//    )
-//
+
     me = j > i
       ? combine(me, uncles.shift())
       : combine(uncles.shift(), me)

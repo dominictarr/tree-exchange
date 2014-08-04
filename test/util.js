@@ -25,7 +25,7 @@ function dumpTree (tree) {
 
 tape('simple', function (t) {
 
-  var depth = {
+  var height = {
     0: [1, 3, 5, 7, 9, 11, 13, 15],
     1: [  2,    6,    10,     14],
     2: [     4,           12],
@@ -36,8 +36,8 @@ tape('simple', function (t) {
 
 
   for(var i = 1; i < 16; i++) {
-    var d = u.depth(i)
-    t.ok(~depth[d].indexOf(i))
+    var d = u.height(i)
+    t.ok(~height[d].indexOf(i))
   }
 
   t.end()
