@@ -1,5 +1,22 @@
 # tree-exchange
 
+Okay so this is some stuff I've been working on that needs to be modularized
+but I needed to put it on github so I can show other people...
+
+## usecases
+
+some ideas about what you could use this for.
+
+* torrentfileless bittorrentlike. Each block can be accompainied with a proof
+  that it is part of the whole file. The overhead required for this is a
+  variable tradeoff - so this could be used to make a bittorrentlike thing
+  with a variable blocksize.
+
+* verifyable logs - You could create an append-only log that readers could
+  seek into, but still verify that any subset of blocks are parts of the log.
+  This could be used for streaming live video, or for message logs, such as in
+  [secure-scuttlebutt](https://github.com/dominictarr/secure-scuttlebutt)
+
 ## binary hash trees
 
 Split a file into N blocks of size S. Allocate an array
